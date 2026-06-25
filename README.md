@@ -1,4 +1,4 @@
-"""# Kastil Terkutuk - RPG
+## Kastil Terkutuk - RPG
 
 **Kastil Terkutuk** adalah sebuah game RPG 2D yang dikembangkan menggunakan **C++** dan library **SFML**. Game ini mengusung genre eksplorasi dungeon dengan sistem pertarungan *turn-based* (bergiliran) bergaya klasik.
 
@@ -34,3 +34,5 @@ Untuk melakukan kompilasi (*build*) kode sumber permainan, pastikan sistem Anda 
 * **CMake** (minimum versi 3.16).
 * **SFML** (Simple and Fast Multimedia Library) versi **2.6** (Modul Graphics, Window, dan System wajib dipasang).
 
+## Link Youtube
+https://youtu.be/YUOKwTWtZgk
