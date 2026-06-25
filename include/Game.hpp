@@ -15,11 +15,9 @@ private:
     void processEvents();
     void update(float dt);
     void render();
-
     void handleKeyPress(const sf::Event& e);
     void startDialog(const std::string& name, std::vector<std::string> lines);
-    void startBattle();          // random encounter (pilih monster sesuai map/level)
-    void startBattleWith(const MonsterDef& def);
+    void startBattle(int mapEnemyIdx);
     void doBattleAction(int choice);
 
     void drawHUD();
@@ -28,8 +26,7 @@ private:
     void drawText(const std::string& s, float x, float y, unsigned size, sf::Color c);
 
     sf::FloatRect feetBox(const sf::Vector2f& pos, int fw, int fh) const;
-    bool collides(const sf::FloatRect& box,
-                  const std::vector<sf::FloatRect>& walls) const;
+    bool collides(const sf::FloatRect& box, const std::vector<sf::FloatRect>& walls) const;
 
     sf::RenderWindow window;
     sf::View         view;
@@ -51,42 +48,26 @@ private:
     std::string  dialogName;
     sf::FloatRect npcZone;
 
-    // ---- Monster sprite sheet ----
-    // Sheet: 576x384, frame 48x64, 12 col x 6 row
-    // 4 monster per baris (tiap monster = 3 frame animasi), total 24 monster
-    static constexpr int MON_FRAME_W  = 48;
-    static constexpr int MON_FRAME_H  = 64;
-    static constexpr int MON_PER_ROW  = 4;   // monster per baris sheet
-    static constexpr int MON_ANIM_COL = 3;   // frame animasi per monster
+    static constexpr int MON_FRAME_W = 48;
+    static constexpr int MON_FRAME_H = 48;
+    static constexpr int MONSTER_COUNT = 16;
 
     struct MonsterDef {
         std::string name;
-        int sheetRow;       // baris di sheet (0-5)
-        int sheetCol;       // indeks monster dalam baris (0-3) -> startX = sheetCol*3*48
-        int hp, atk;
-        int level;          // level minimum encounter
+        int texID, gridX, gridY, hp, atk, exp;
     };
-
-    static const MonsterDef MONSTER_TABLE[];
-    static constexpr int MONSTER_COUNT = 24;
+    static const MonsterDef MONSTER_TABLE[MONSTER_COUNT];
 
     struct Enemy {
         std::string name;
-        int hp, maxHp, atk;
-        int sheetRow, sheetCol;  // posisi di sprite sheet
-        int animFrame  = 0;
-        float animTimer = 0.f;
+        int hp, maxHp, atk, exp, texID, gridX, gridY;
     } enemy{};
 
-    sf::Texture  monsterTex;
-    sf::Sprite   monsterSprite;
-    bool         monsterTexLoaded = false;
-
+    sf::Texture  enemyTex[2], battleBgTex, playerTurnTex, enemyTurnTex;
+    sf::Sprite   monsterSprite, battleBgSprite, playerTurnSprite, enemyTurnSprite;
+    
     std::vector<std::string> battleLog;
-    bool  playerTurn  = true;
-    float battleStep  = 0.f;
-    float encounterTimer = 0.f;
-    float battleAnim = 0.f;
-
-    void updateMonsterFrame();
+    bool  playerTurn = true;
+    float battleStep = 0.f, battleAnim = 0.f, bannerTimer = 0.f;
+    int   currentBanner = 0, activeMapEnemyIdx = -1;
 };

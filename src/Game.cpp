@@ -4,43 +4,30 @@
 #include <cstdio>
 #include <ctime>
 #include <algorithm>
+// ==================== TABEL MUSUH ====================
+// { "Nama", TexID, GridX, GridY, HP, ATK, EXP }
+// TexID 0 = monster.png, 1 = evil.png
+const Game::MonsterDef Game::MONSTER_TABLE[Game::MONSTER_COUNT] = {
+    // ---- MONSTER.PNG ----
+    {"Kelelawar Jahat", 0, 0, 0, 40,  8,  10},
+    {"Slime Biru",      0, 1, 0, 30,  5,  5},
+    {"Goblin Hijau",    0, 2, 0, 60,  12, 15},
+    {"Minotaur",        0, 3, 0, 150, 20, 40},
+    {"Gargoyle",        0, 0, 1, 90,  15, 25},
+    {"Tengkorak Hidup", 0, 1, 1, 70,  14, 20},
+    {"Sang Reaper",     0, 2, 1, 200, 28, 60},
+    {"Succubus",        0, 3, 1, 120, 22, 35},
 
-// ==================== MONSTER TABLE ====================
-// Format: {name, sheetRow, sheetCol, hp, atk, minLevel}
-// Sheet: 576x384, 48x64 per frame, 4 monster per baris, 3 frame animasi
-const Game::MonsterDef Game::MONSTER_TABLE[] = {
-    // Baris 0
-    {"Gadis Roh",       0, 0,  40,  8, 1},
-    {"Goblin Hijau",    0, 1,  55, 12, 1},
-    {"Serigala Abu",    0, 2,  70, 14, 2},
-    {"Ksatria Gelap",   0, 3,  90, 18, 3},
-    // Baris 1
-    {"Harpy Merah",     1, 0,  60, 10, 1},
-    {"Orc Besar",       1, 1,  80, 16, 2},
-    {"Serigala Biru",   1, 2,  85, 15, 2},
-    {"Iblis Petir",     1, 3, 110, 22, 4},
-    // Baris 2
-    {"Rubah Putih",     2, 0,  50,  9, 1},
-    {"Shadown Monk",    2, 1,  75, 13, 2},
-    {"Tengkorak Raja",  2, 2,  95, 20, 3},
-    {"Iblis Merah",     2, 3, 130, 25, 5},
-    // Baris 3
-    {"Rubah Silver",    3, 0,  65, 11, 2},
-    {"Goat Demon",      3, 1,  70, 14, 2},
-    {"Armor Maut",      3, 2, 100, 21, 3},
-    {"Naga Ungu",       3, 3, 150, 28, 6},
-    // Baris 4
-    {"Rubah Api",       4, 0,  55, 10, 1},
-    {"Shadow Lord",     4, 1,  85, 17, 3},
-    {"Yeti Biru",       4, 2,  90, 16, 3},
-    {"Garuda Ungu",     4, 3, 140, 26, 5},
-    // Baris 5
-    {"Rubah Baja",      5, 0,  60, 11, 2},
-    {"Titan Gelap",     5, 1,  95, 19, 3},
-    {"Raksasa Beku",    5, 2, 115, 23, 4},
-    {"Naga Agung",      5, 3, 180, 32, 7},
+    // ---- EVIL.PNG ----
+    {"Bandit Ungu",     1, 0, 0, 65,  10, 15},
+    {"Prajurit Bayaran",1, 1, 0, 85,  16, 20},
+    {"Penyihir Gelap",  1, 2, 0, 50,  24, 25},
+    {"Ninja Hitam",     1, 3, 0, 75,  18, 22},
+    {"Ninja Merah",     1, 0, 1, 80,  19, 25},
+    {"Ksatria Kegelapan",1, 1, 1,180, 25, 50},
+    {"Iblis Merah",     1, 2, 1, 250, 30, 80},
+    {"Jin Jahat",       1, 3, 1, 160, 20, 45}
 };
-
 // ==================== KONSTRUKTOR ====================
 Game::Game()
 : window(sf::VideoMode(WIN_W, WIN_H), "Kastil Terkutuk - RPG"),
@@ -59,6 +46,13 @@ Game::Game()
     if (!party[1].load("assets/char2_walk.png", "assets/char2_face.png", "Mira", walkCfg)) std::exit(1);
     party[0].loadBattle("assets/char1_battle.png");
     party[1].loadBattle("assets/char2_battle.png");
+    // Muat aset musuh
+    if (!enemyTex[0].loadFromFile("assets/monster.png") || 
+        !enemyTex[1].loadFromFile("assets/evil.png")) {
+        std::cerr << "Peringatan: Gagal memuat sprite musuh!\n";
+    }
+    monsterSprite.setOrigin(MON_FRAME_W / 2.f, MON_FRAME_H / 2.f);
+    monsterSprite.setScale(3.5f, 3.5f); // Perbesar musuh saat pertarungan
 
     // ====== PERBAIKI ARAH DI SINI (lihat catatan di bawah) ======
     // Kalau atas-bawah tertukar: {3,1,2,0}. Kalau kiri-kanan: {0,2,1,3}.
@@ -105,13 +99,6 @@ Game::Game()
 
     playerPos = maps[0].defaultSpawn;
     npcZone = sf::FloatRect(maps[0].defaultSpawn.x-90, maps[0].defaultSpawn.y, 60, 60);
-
-    // ====== MONSTER SPRITE SHEET ======
-    monsterTexLoaded = monsterTex.loadFromFile("assets/monster.png");
-    if (monsterTexLoaded) {
-        monsterSprite.setTexture(monsterTex);
-        monsterSprite.setOrigin(MON_FRAME_W / 2.f, MON_FRAME_H / 2.f);
-    }
 }
 
 // ==================== LOOP ====================
@@ -177,58 +164,27 @@ void Game::startDialog(const std::string& name, std::vector<std::string> lines) 
 }
 
 // ==================== BATTLE ====================
-void Game::startBattleWith(const MonsterDef& def) {
-    enemy.name     = def.name;
-    enemy.hp       = def.hp;
-    enemy.maxHp    = def.hp;
-    enemy.atk      = def.atk;
-    enemy.sheetRow = def.sheetRow;
-    enemy.sheetCol = def.sheetCol;
-    enemy.animFrame  = 0;
-    enemy.animTimer  = 0.f;
+void Game::startBattle() {
+    // Pilih musuh acak (Nantinya bisa disesuaikan dengan level map)
+    int idx = std::rand() % MONSTER_COUNT;
+    const MonsterDef& def = MONSTER_TABLE[idx];
 
-    // Set texture rect ke frame pertama monster
-    if (monsterTexLoaded) {
-        int sx = def.sheetCol * MON_ANIM_COL * MON_FRAME_W;
-        int sy = def.sheetRow * MON_FRAME_H;
-        monsterSprite.setTextureRect(sf::IntRect(sx, sy, MON_FRAME_W, MON_FRAME_H));
-        // Scale: tampilkan lebih besar (2.5x), flip X agar menghadap kiri (ke player)
-        monsterSprite.setScale(-2.5f, 2.5f);
-    }
+    enemy.name  = def.name;
+    enemy.maxHp = def.hp;
+    enemy.hp    = def.hp;
+    enemy.atk   = def.atk;
+    enemy.exp   = def.exp;
+    enemy.texID = def.texID;
+    enemy.gridX = def.gridX;
+    enemy.gridY = def.gridY;
+    enemy.animFrame = 0;
+    enemy.animTimer = 0.f;
+
+    monsterSprite.setTexture(enemyTex[enemy.texID]);
 
     battleLog.clear();
-    battleLog.push_back("Seekor " + enemy.name + " muncul!");
+    battleLog.push_back("Seekor " + enemy.name + " menghadang!");
     playerTurn = true; battleAnim = 0.f; state = State::Battle;
-}
-
-void Game::startBattle() {
-    // Pilih monster acak sesuai map
-    // Map 0 (kastil): level 1-3, Map 1 (dungeon): level 3-7
-    int minLv = (currentMap == 0) ? 1 : 3;
-    int maxLv = (currentMap == 0) ? 3 : 7;
-
-    // Kumpulkan kandidat
-    std::vector<int> candidates;
-    for (int i = 0; i < MONSTER_COUNT; i++) {
-        if (MONSTER_TABLE[i].level >= minLv && MONSTER_TABLE[i].level <= maxLv)
-            candidates.push_back(i);
-    }
-    int pick = candidates.empty() ? 0 : candidates[rand() % candidates.size()];
-    startBattleWith(MONSTER_TABLE[pick]);
-}
-
-void Game::updateMonsterFrame() {
-    // Animasi idle monster: 3 frame, 4 FPS
-    enemy.animTimer += 1.f / 60.f;
-    if (enemy.animTimer >= 1.f / 4.f) {
-        enemy.animTimer = 0.f;
-        enemy.animFrame = (enemy.animFrame + 1) % MON_ANIM_COL;
-        if (monsterTexLoaded) {
-            int sx = (enemy.sheetCol * MON_ANIM_COL + enemy.animFrame) * MON_FRAME_W;
-            int sy = enemy.sheetRow * MON_FRAME_H;
-            monsterSprite.setTextureRect(sf::IntRect(sx, sy, MON_FRAME_W, MON_FRAME_H));
-        }
-    }
 }
 void Game::doBattleAction(int choice) {
     Character& me = party[activeIdx]; int dmg = 0;
@@ -288,8 +244,16 @@ void Game::update(float dt) {
         me.setFrame();
     }
     else if (state == State::Battle) {
+        enemy.animTimer += dt;
+        if (enemy.animTimer >= 1.f / 6.f) { // 6 FPS untuk musuh
+            enemy.animTimer = 0;
+            enemy.animFrame = (enemy.animFrame + 1) % 3;
+        }
+        int dirKiri = 1; // Baris menghadap kiri di sprite sheet RPG
+        int texX = (enemy.gridX * 3 + enemy.animFrame) * MON_FRAME_W;
+        int texY = (enemy.gridY * 4 + dirKiri) * MON_FRAME_H;
+        monsterSprite.setTextureRect(sf::IntRect(texX, texY, MON_FRAME_W, MON_FRAME_H));
         if (battleAnim > 0) battleAnim -= dt;
-        updateMonsterFrame();   // animasi idle monster tiap frame
         if (!playerTurn) {
             battleStep -= dt;
             if (battleStep <= 0) {
@@ -363,19 +327,11 @@ void Game::render() {
         sf::RectangleShape bg({(float)WIN_W,(float)WIN_H});
         bg.setFillColor(sf::Color(20,10,30,235)); window.draw(bg);
 
-        // ---- Monster ----
-        if (monsterTexLoaded) {
-            float shakeX = (!playerTurn && battleAnim > 0) ? (float)(rand()%6-3) : 0.f;
-            float lungeX = (playerTurn  && battleAnim > 0) ? -30.f : 0.f;
-            monsterSprite.setPosition(WIN_W * 0.68f + shakeX + lungeX, WIN_H * 0.38f);
+        if (enemy.hp > 0) {
+            float lunge = (!playerTurn && battleAnim > 0) ? -40.f : 0.f; // Musuh menerjang ke kiri
+            float shake = (playerTurn && battleAnim > 0) ? (std::rand() % 6 - 3) : 0.f; // Musuh bergetar saat kena hit
+            monsterSprite.setPosition(WIN_W * 0.65f + lunge + shake, WIN_H * 0.45f);
             window.draw(monsterSprite);
-        } else {
-            // Fallback: kotak ungu jika texture gagal muat
-            sf::RectangleShape foe({110,110}); foe.setPosition(WIN_W*0.62f, 140);
-            foe.setFillColor(sf::Color(120,40,160));
-            foe.setOutlineColor(sf::Color(200,120,255)); foe.setOutlineThickness(2);
-            if (!playerTurn && battleAnim > 0) foe.move((rand()%6-3), 0);
-            window.draw(foe);
         }
 
         if (me.battleTex.getSize().x > 0) {
@@ -384,11 +340,9 @@ void Game::render() {
             me.battleSprite.setPosition(WIN_W*0.28f + lunge + shake, WIN_H*0.62f);
             window.draw(me.battleSprite);
         }
-        drawText(enemy.name, WIN_W*0.52f, 55, 22, sf::Color(200,120,255));
-        drawBar(WIN_W*0.52f, 85, 220, 16,
+        drawText(enemy.name, WIN_W*0.55f, 90, 22, sf::Color(200,120,255));
+        drawBar(WIN_W*0.55f, 120, 200, 16,
                 (float)std::max(0,enemy.hp)/enemy.maxHp, sf::Color(155,89,182));
-        drawText("HP: " + std::to_string(std::max(0,enemy.hp)) + "/" + std::to_string(enemy.maxHp),
-                 WIN_W*0.52f, 105, 13, sf::Color(200,200,200));
 
         sf::RectangleShape lb({(float)WIN_W-80,140}); lb.setPosition(40, WIN_H-220);
         lb.setFillColor(sf::Color(0,0,0,160)); window.draw(lb);
